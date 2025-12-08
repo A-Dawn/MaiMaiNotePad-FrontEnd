@@ -213,26 +213,27 @@ class HomePageContent extends StatelessWidget {
                           },
                           isLargeScreen,
                         ),
-                        if (userProvider.currentUser?.isAdminOrModerator ==
-                            true) ...[
+                        // 上传管理入口：所有登录用户可见，功能根据角色在内部区分
+                        if (userProvider.isLoggedIn) ...[
                           _buildQuickActionCard(
                             context,
                             '上传管理',
                             Icons.cloud_upload,
-                            '管理文件上传',
+                            '管理或查看自己上传的内容',
                             onUploadPressed!,
                             isLargeScreen,
                           ),
-                          if (userProvider.currentUser?.role == 'admin') ...[
-                            _buildQuickActionCard(
-                              context,
-                              '管理员概览',
-                              Icons.admin_panel_settings,
-                              '查看系统统计信息',
-                              onAdminPressed!,
-                              isLargeScreen,
-                            ),
-                          ],
+                        ],
+                        // 管理员概览仍然只对管理员可见
+                        if (userProvider.currentUser?.role == 'admin') ...[
+                          _buildQuickActionCard(
+                            context,
+                            '管理员概览',
+                            Icons.admin_panel_settings,
+                            '查看系统统计信息',
+                            onAdminPressed!,
+                            isLargeScreen,
+                          ),
                         ],
                       ],
                     );

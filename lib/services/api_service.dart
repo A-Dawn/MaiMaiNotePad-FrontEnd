@@ -425,13 +425,14 @@ class ApiService {
   }
 
   // 获取用户Star的知识库和人设卡
-  // 注意：后端返回的是一个列表，每个元素包含 type 和 target_id
+  // 注意：后端返回的是分页对象 {items: [...], total: N, page: N, page_size: N}
   Future<Map<String, dynamic>> getUserStars(String token, {bool includeDetails = false}) async {
     try {
       // 使用include_details参数获取完整信息
       final response = await get('/api/user/stars?include_details=$includeDetails');
-      // 使用统一的列表提取方法
-      final List<dynamic> starsList = _extractListFromResponse(response);
+      // 后端返回分页对象，需要从items字段提取列表
+      final Map<String, dynamic> responseData = response.data is Map<String, dynamic> ? response.data : {};
+      final List<dynamic> starsList = responseData['items'] ?? [];
 
       final List<String> knowledgeIds = [];
       final List<String> personaIds = [];
@@ -1286,12 +1287,10 @@ class ApiService {
   ) async {
     try {
       final response = await delete('/api/knowledge/$knowledgeId/$fileId');
-      final payload = response.data;
-      final data = payload is Map<String, dynamic>
-          ? payload['data'] as Map<String, dynamic>? ?? {}
-          : <String, dynamic>{};
-      final message = data['message']?.toString() ?? '文件删除成功';
-      final knowledgeDeleted = data['knowledge_deleted'] == true;
+      // 后端直接返回 {message: '...', knowledge_deleted: boolean}，不带data包装
+      final payload = response.data is Map<String, dynamic> ? response.data : <String, dynamic>{};
+      final message = payload['message']?.toString() ?? '文件删除成功';
+      final knowledgeDeleted = payload['knowledge_deleted'] == true;
       return DeleteKnowledgeFileResult(
         message: message,
         knowledgeDeleted: knowledgeDeleted,

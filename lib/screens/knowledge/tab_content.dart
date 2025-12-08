@@ -128,9 +128,7 @@ class KnowledgeTabContent extends StatelessWidget {
                                 SizedBox(height: isLargeScreen ? 12 : 8),
                                 Text(
                                   userProvider.isLoggedIn
-                                      ? (userProvider.currentUser?.isAdminOrModerator == true
-                                          ? '点击上传知识库文件'
-                                          : '上传功能仅对管理员和审核员开放')
+                                      ? '点击上传知识库文件，内容将在审核通过后公开'
                                       : '请登录后上传知识库文件',
                                   style: TextStyle(
                                     fontSize: isLargeScreen ? 14 : 12,
@@ -141,19 +139,12 @@ class KnowledgeTabContent extends StatelessWidget {
                                 if (userProvider.isLoggedIn)
                                   ElevatedButton.icon(
                                     onPressed: () {
-                                      // 导航到上传管理tab（管理员和审核员可见）
-                                      if (userProvider.currentUser?.isAdminOrModerator == true) {
-                                        // 调用父组件提供的切换tab回调
-                                        onSwitchToUploadManagement?.call();
-                                      } else {
-                                        // 如果是普通用户，显示提示信息
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('上传功能仅对管理员和审核员开放'),
-                                            backgroundColor: Colors.orange,
-                                          ),
-                                        );
-                                      }
+                                      // 所有登录用户都可以上传知识库
+                                      Navigator.pushNamed(
+                                        context,
+                                        AppRouter.upload,
+                                        arguments: {'type': 'knowledge'},
+                                      );
                                     },
                                     icon: const Icon(Icons.upload_file),
                                     label: Text(

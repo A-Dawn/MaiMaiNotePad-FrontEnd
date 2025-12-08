@@ -5,6 +5,9 @@ import 'package:dio/dio.dart';
 import '../../services/api_service.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../constants/app_constants.dart';
+import 'package:provider/provider.dart';
+import '../../providers/user_provider.dart';
+import '../../utils/app_router.dart';
 
 class UploadManagementTabContent extends StatefulWidget {
   const UploadManagementTabContent({super.key});
@@ -69,8 +72,16 @@ class _UploadManagementTabContentState extends State<UploadManagementTabContent>
     // 启动动画
     _animationController.forward();
 
-    // 加载上传管理数据
-    _loadUploadData();
+    // 仅管理员或审核员加载上传历史和统计数据
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final isAdminOrModerator =
+        userProvider.currentUser?.isAdminOrModerator == true;
+    if (isAdminOrModerator) {
+      _loadUploadData();
+    } else {
+      // 普通用户只使用上传功能，不调用管理端接口
+      _isLoading = false;
+    }
   }
 
   @override
@@ -397,6 +408,10 @@ class _UploadManagementTabContentState extends State<UploadManagementTabContent>
       return;
     }
 
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final isAdminOrModerator =
+        userProvider.currentUser?.isAdminOrModerator == true;
+
     setState(() {
       _isUploading = true;
       _uploadProgress = 0.0;
@@ -491,13 +506,19 @@ class _UploadManagementTabContentState extends State<UploadManagementTabContent>
         _currentUploadType = '';
         _knowledgeNameController.clear();
         _knowledgeDescriptionController.clear();
+      });
+
+      // 管理员和审核员刷新上传管理数据，普通用户不调用管理端接口
+      if (isAdminOrModerator) {
+        await _loadUploadData();
+      }
+
+      // 清理表单字段和已选文件
+      setState(() {
         _knowledgeCopyrightController.clear();
         _knowledgeTagsController.clear();
         _knowledgeFiles.clear();
       });
-
-      // 刷新数据
-      await _loadUploadData();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -545,6 +566,10 @@ class _UploadManagementTabContentState extends State<UploadManagementTabContent>
       );
       return;
     }
+
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final isAdminOrModerator =
+        userProvider.currentUser?.isAdminOrModerator == true;
 
     setState(() {
       _isUploading = true;
@@ -645,8 +670,10 @@ class _UploadManagementTabContentState extends State<UploadManagementTabContent>
         _personaFiles.clear();
       });
 
-      // 刷新数据
-      await _loadUploadData();
+      // 管理员和审核员刷新上传管理数据，普通用户不调用管理端接口
+      if (isAdminOrModerator) {
+        await _loadUploadData();
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1036,84 +1063,111 @@ class _UploadManagementTabContentState extends State<UploadManagementTabContent>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final userProvider = Provider.of<UserProvider>(context);
+    final isAdminOrModerator =
+        userProvider.currentUser?.isAdminOrModerator == true;
+    final isLoggedIn = userProvider.isLoggedIn;
 
-    return Scaffold(
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadUploadData,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 标题和操作按钮
-                    Row(
-                      children: [
-                        FadeTransition(
-                          opacity: _fadeAnimation,
-                          child: Text(
-                            '上传管理',
-                            style: theme.textTheme.headlineMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: colorScheme.onSurface,
-                            ),
-                          ),
-                        ),
-                        const Spacer(),
-                        Row(
-                          children: [
-                            // 上传知识库按钮
-                            ElevatedButton.icon(
-                              onPressed: _isUploading
-                                  ? null
-                                  : () {
-                                      _showKnowledgeUploadDialog();
-                                    },
-                              icon: const Icon(Icons.school),
-                              label: const Text('上传知识库'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: colorScheme.primary,
-                                foregroundColor: colorScheme.onPrimary,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            // 上传人设卡按钮
-                            ElevatedButton.icon(
-                              onPressed: _isUploading
-                                  ? null
-                                  : () {
-                                      _showPersonaUploadDialog();
-                                    },
-                              icon: const Icon(Icons.person),
-                              label: const Text('上传人设卡'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.orange,
-                                foregroundColor: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
-                    // 上传进度条
-                    if (_isUploading) ...[
-                      _buildUploadProgress(),
-                      const SizedBox(height: 24),
-                    ],
-
-                    // 统计卡片
-                    _buildUploadStatsCards(),
-                    const SizedBox(height: 24),
-
-                    // 上传历史
-                    _buildUploadHistorySection(),
-                  ],
+    final content = SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 标题和操作按钮
+          Row(
+            children: [
+              FadeTransition(
+                opacity: _fadeAnimation,
+                child: Text(
+                  '上传管理',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
               ),
+              const Spacer(),
+              Row(
+                children: [
+                  // 上传知识库按钮
+                  ElevatedButton.icon(
+                    onPressed: _isUploading
+                        ? null
+                        : () {
+                            _showKnowledgeUploadDialog();
+                          },
+                    icon: const Icon(Icons.school),
+                    label: const Text('上传知识库'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colorScheme.primary,
+                      foregroundColor: colorScheme.onPrimary,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // 上传人设卡按钮
+                  ElevatedButton.icon(
+                    onPressed: _isUploading
+                        ? null
+                        : () {
+                            _showPersonaUploadDialog();
+                          },
+                    icon: const Icon(Icons.person),
+                    label: const Text('上传人设卡'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // 上传进度条
+          if (_isUploading) ...[
+            _buildUploadProgress(),
+            const SizedBox(height: 24),
+          ],
+
+          // 入口：查看我的知识库与人设卡
+          if (isLoggedIn) ...[
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () {
+                  Navigator.pushNamed(context, AppRouter.myContent);
+                },
+                icon: const Icon(Icons.folder_shared),
+                label: const Text('查看我的知识库与人设卡'),
+              ),
             ),
+            const SizedBox(height: 24),
+          ],
+
+          // 管理端专属：统计卡片与上传历史
+          if (isAdminOrModerator) ...[
+            _buildUploadStatsCards(),
+            const SizedBox(height: 24),
+            _buildUploadHistorySection(),
+          ],
+        ],
+      ),
+    );
+
+    return Scaffold(
+      body: isAdminOrModerator
+          ? RefreshIndicator(
+              onRefresh: _loadUploadData,
+              child: content,
+            )
+          : content,
     );
   }
 

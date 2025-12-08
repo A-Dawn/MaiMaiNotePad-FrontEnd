@@ -1,5 +1,28 @@
 # 修改日志 (CHANGELOG)
 
+## 2025-12-08 - 上传管理与「我的内容」改造
+
+### 1. 首页导航与上传入口
+- 保留左侧侧边栏「上传管理」入口，对所有已登录用户可见
+- 调整 `HomeScreen` 的页面索引与导航索引映射，确保上传管理标签在普通用户 / 审核员 / 管理员下均能正确定位
+- 修复早期实现中「上传管理」实际跳回知识库页的问题
+
+**修改位置：**
+- `lib/screens/home/home_screen.dart`
+
+### 2. 上传管理页按角色分流
+- 普通用户：
+  - 在「上传管理」页仅看到上传知识库 / 人设卡相关 UI，不再调用 `/api/admin/upload-history` 和 `/api/admin/upload-stats`，避免 403 与多余报错
+  - 增加「查看我的知识库与人设卡」按钮，跳转到 `MyContentScreen` 管理个人上传内容
+- 审核员 / 管理员：
+  - 保留上传功能的同时继续显示上传统计与上传历史列表
+  - 下拉刷新和「删除上传记录 / 重新处理上传」等管理能力保持不变
+
+**修改位置：**
+- `lib/screens/admin/upload_management_tab_content.dart`
+
+---
+
 ## 2025-11-25 - 前端功能与错误处理增强
 
 ### 1. 服务层与会话处理
@@ -401,7 +424,6 @@ Future<String?> _getToken() async {
 - `lib/models/persona.dart` - 人设卡模型
 - `lib/screens/admin/` - 管理员相关页面
 - `lib/screens/messages/` - 消息相关页面
-
 
 
 

@@ -203,20 +203,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // 切换到上传管理tab
   void _switchToUploadManagementTab() {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
-    // 计算上传管理tab的索引
+
     // basePages: 知识库(0) + 人设卡(1) + 消息(2) + 个人资料(3) = 4
     int uploadManagementIndex = 4; // 从basePages之后开始
-    
-    // 审核员和管理员都有审核管理页面
-    if (userProvider.currentUser?.isAdminOrModerator == true) {
-      uploadManagementIndex += 1; // 审核管理
-    }
-    // 只有管理员有管理员概览页面
-    if (userProvider.currentUser?.role == 'admin') {
-      uploadManagementIndex += 1; // 管理员概览
-    }
-    // 现在的uploadManagementIndex就是上传管理的索引（上传管理在最后）
 
+    // 审核管理（仅在有权限时存在）
+    if (userProvider.currentUser?.isAdminOrModerator == true) {
+      uploadManagementIndex += 1;
+    }
+    // 管理员概览（仅管理员时存在）
+    if (userProvider.currentUser?.role == 'admin') {
+      uploadManagementIndex += 1;
+    }
+
+    // 对所有登录用户都允许跳转到上传管理tab
     setState(() {
       _currentIndex = uploadManagementIndex;
     });
@@ -271,8 +271,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       adminPages.add(AdminOverviewTabContent());
     }
 
-    // 添加上传管理标签页（管理员和审核员可见）
-    if (userProvider.currentUser?.isAdminOrModerator == true) {
+    // 添加上传管理标签页（所有已登录用户可见）
+    if (userProvider.isLoggedIn) {
       adminPages.add(UploadManagementTabContent());
     }
 
@@ -395,10 +395,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           // 消息入口已移至右上角通知铃铛，此处隐藏
                           // _buildNavItem(Icons.message, '消息', 2),
                           // 个人资料已移至右上角用户菜单
+                          // 审核管理：仅管理员/审核员可见
                           if (userProvider.currentUser?.isAdminOrModerator ==
                               true) ...[
                             _buildNavItem(Icons.verified, '审核管理', 2),
                           ],
+                          // 管理员概览：仅管理员可见
                           if (userProvider.currentUser?.role == 'admin') ...[
                             _buildNavItem(
                               Icons.admin_panel_settings,
@@ -406,8 +408,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               3,
                             ),
                           ],
-                          if (userProvider.currentUser?.isAdminOrModerator ==
-                              true) ...[
+                          // 上传管理：所有已登录用户可见，具体权限在页面内部控制
+                          if (userProvider.isLoggedIn) ...[
                             _buildNavItem(Icons.cloud_upload, '上传管理', 4),
                           ],
                         ],
@@ -666,8 +668,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       currentPageIndex++;
     }
     
-    // 上传管理（管理员和审核员可见，页面索引6，导航索引4）
-    if (userProvider.currentUser?.isAdminOrModerator == true) {
+    // 上传管理（所有已登录用户可见，页面索引根据前面页面动态确定，导航索引固定为4）
+    if (userProvider.isLoggedIn) {
       if (pageIndex == currentPageIndex) {
         return 4; // 导航索引固定为4
       }
@@ -782,14 +784,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 return;
               }
 
-              // 上传管理权限检查（导航索引4，实际页面索引6）
-              if (index == 4 &&
-                  userProvider.currentUser?.isAdminOrModerator != true) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text('需要管理员或审核员权限')));
-                return;
-              }
+              // 上传管理：对所有已登录用户开放入口
+              // 具体能看到哪些功能（仅查看自己的上传记录，还是查看所有用户并进行管理）
+              // 由上传管理页面内部根据角色再做细粒度权限控制
 
               setState(() {
                 _currentIndex = actualIndex;
@@ -842,8 +839,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       currentIndex++;
     }
     
-    // 上传管理（管理员和审核员可见）
-    if (userProvider.currentUser?.isAdminOrModerator == true) {
+    // 上传管理（所有已登录用户可见）
+    if (userProvider.isLoggedIn) {
       if (index == currentIndex) {
         return '上传管理';
       }

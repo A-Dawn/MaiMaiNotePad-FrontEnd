@@ -7,9 +7,9 @@ import '../../providers/theme_provider.dart';
 import '../../constants/app_constants.dart';
 import '../../utils/app_router.dart';
 import '../../services/api_service.dart';
-import '../admin/overview_tab_content.dart';
 import '../admin/upload_management_tab_content.dart';
 import '../admin/review_tab_content.dart';
+import '../admin/overview_tab_content.dart';
 import '../knowledge/tab_content.dart';
 import '../persona/tab_content.dart';
 import '../message/tab_content.dart';
@@ -42,7 +42,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   String _knowledgeSearchQuery = '';
   String _personaSearchQuery = '';
-  
+
   // 未读消息数量
   int _unreadMessageCount = 0;
 
@@ -83,7 +83,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     try {
       final apiService = ApiService();
       final response = await apiService.getPublicKnowledge();
-      
+
       setState(() {
         _knowledgeList.clear();
         _knowledgeList.addAll(response.items);
@@ -106,7 +106,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     try {
       final apiService = ApiService();
       final response = await apiService.getPublicPersonas();
-      
+
       setState(() {
         _personaList.clear();
         _personaList.addAll(response.items);
@@ -137,8 +137,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
       final apiService = ApiService();
       final messages = await apiService.getUserMessages(page: 1, limit: 100);
-      final unreadCount = messages.where((msg) => msg['is_read'] == false).length;
-      
+      final unreadCount = messages
+          .where((msg) => msg['is_read'] == false)
+          .length;
+
       if (mounted) {
         setState(() {
           _unreadMessageCount = unreadCount;
@@ -193,12 +195,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
   }
 
-  // 切换到指定tab的方法
-  void _switchToTab(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
-  }
+  // 计算上传管理标签页的索引
+  int _getUploadManagementIndex(UserProvider userProvider) {
+    // 上传管理在导航中的索引总是4，但在实际页面列表中的位置是动态的
+    // 基础页面：知识库(0)、人设卡(1)、消息(2)、个人资料(3)
+    int uploadManagementIndex = 4; // 从4开始（基础页面之后）
 
   // 切换到上传管理tab
   void _switchToUploadManagementTab() {
@@ -218,7 +219,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     // 对所有登录用户都允许跳转到上传管理tab
     setState(() {
-      _currentIndex = uploadManagementIndex;
+      _currentIndex = _getUploadManagementIndex(userProvider);
     });
   }
 
@@ -282,8 +283,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildMainContent(UserProvider userProvider) {
     final pages = _buildPages(userProvider);
     // 确保索引在有效范围内，防止越界错误
-    final safeIndex = _currentIndex >= 0 && _currentIndex < pages.length 
-        ? _currentIndex 
+    final safeIndex = _currentIndex >= 0 && _currentIndex < pages.length
+        ? _currentIndex
         : 0;
     // 如果索引无效，重置为0
     if (safeIndex != _currentIndex) {
@@ -390,6 +391,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       child: ListView(
                         padding: EdgeInsets.zero,
                         children: [
+                          // 基础标签页：知识库、人设卡
                           _buildNavItem(Icons.library_books, '知识库', 0),
                           _buildNavItem(Icons.person, '人设卡', 1),
                           // 消息入口已移至右上角通知铃铛，此处隐藏
@@ -397,7 +399,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           // 个人资料已移至右上角用户菜单
                           // 审核管理：仅管理员/审核员可见
                           if (userProvider.currentUser?.isAdminOrModerator ==
-                              true) ...[
+                              true)
                             _buildNavItem(Icons.verified, '审核管理', 2),
                           ],
                           // 管理员概览：仅管理员可见
@@ -483,8 +485,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   ),
                                   if (_unreadMessageCount > 0)
                                     Positioned(
-                                      right: 8,
-                                      top: 8,
+                                      right: 2,
+                                      top: 2,
                                       child: Container(
                                         padding: const EdgeInsets.all(4),
                                         decoration: BoxDecoration(
@@ -496,7 +498,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           minHeight: 16,
                                         ),
                                         child: Text(
-                                          _unreadMessageCount > 99 ? '99+' : '$_unreadMessageCount',
+                                          _unreadMessageCount > 99
+                                              ? '99+'
+                                              : '$_unreadMessageCount',
                                           style: const TextStyle(
                                             color: Colors.white,
                                             fontSize: 10,
@@ -521,10 +525,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           context,
                                         ).colorScheme.primary,
                                         child: Text(
-                                          userProvider.currentUser?.name.substring(
-                                                0,
-                                                1,
-                                              ) ??
+                                          userProvider.currentUser?.name
+                                                  .substring(0, 1) ??
                                               'U',
                                           style: TextStyle(
                                             color: Colors.white,
@@ -537,7 +539,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       // 用户名（仅在大屏幕显示）
                                       if (isLargeScreen)
                                         Text(
-                                          userProvider.currentUser?.name ?? '用户',
+                                          userProvider.currentUser?.name ??
+                                              '用户',
                                           style: TextStyle(
                                             fontSize: 14,
                                             fontWeight: FontWeight.w500,
@@ -584,9 +587,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     value: 'logout',
                                     child: Row(
                                       children: [
-                                        Icon(Icons.logout, size: 20, color: Colors.red),
+                                        Icon(
+                                          Icons.logout,
+                                          size: 20,
+                                          color: Colors.red,
+                                        ),
                                         SizedBox(width: 8),
-                                        Text('登出', style: TextStyle(color: Colors.red)),
+                                        Text(
+                                          '登出',
+                                          style: TextStyle(color: Colors.red),
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -633,39 +643,54 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // 将实际页面索引转换为导航索引
-  // 导航索引（固定）：知识库(0), 人设卡(1), 审核管理(2), 管理员概览(3), 上传管理(4)
-  // 实际页面索引（动态）：知识库(0), 人设卡(1), 消息(2), 个人资料(3), 然后根据权限添加管理页面
+  // 计算基础页面数量（不包括动态管理页面）
+  int _getBasePageCount(UserProvider userProvider) {
+    // 基础页面：知识库(0)、人设卡(1)、消息(2)、个人资料(3) = 4个
+    return 4;
+  }
+
+  // 计算上传管理的导航索引
+  int _getUploadManagementNavIndex(UserProvider userProvider) {
+    int index = 2; // 从索引2开始（知识库、人设卡之后）
+
+    // 如果有审核管理，索引+1
+    if (userProvider.currentUser?.isAdminOrModerator == true) {
+      index++;
+    }
+
+    // 如果有管理员概览，索引+1
+    if (userProvider.currentUser?.role == 'admin') {
+      index++;
+    }
+
+    return index;
+  }
+
+  // 将页面索引转换为导航索引
   int _getNavIndexFromPageIndex(int pageIndex, UserProvider userProvider) {
-    // 基础页面（0-1）直接对应
+    // 基础页面：知识库(0)、人设卡(1) - 在导航中直接对应
     if (pageIndex <= 1) {
       return pageIndex;
     }
-    
-    // 消息(2)和个人资料(3)不在侧边栏显示
+
+    // 消息(2)和个人资料(3)不显示在导航中，映射到人设卡(1)
     if (pageIndex == 2 || pageIndex == 3) {
-      return -1;
+      return 1;
     }
-    
-    // 从索引4开始是管理页面，需要根据用户权限和页面顺序来确定导航索引
-    // 页面顺序（动态）：审核管理(4) -> 管理员概览(5) -> 上传管理(6)
-    // 导航索引（固定）：审核管理(2), 管理员概览(3), 上传管理(4)
-    int currentPageIndex = 4;
-    
-    // 审核管理（管理员和审核员可见，页面索引4，导航索引2）
-    if (userProvider.currentUser?.isAdminOrModerator == true) {
-      if (pageIndex == currentPageIndex) {
-        return 2; // 导航索引固定为2
-      }
-      currentPageIndex++;
+
+    // 动态管理页面：根据页面在列表中的实际位置计算
+    int basePageCount = _getBasePageCount(userProvider);
+    int uploadManagementIndex = _getUploadManagementIndex(userProvider);
+
+    // 上传管理：固定为导航索引4
+    if (pageIndex == uploadManagementIndex) {
+      return 4;
     }
-    
-    // 管理员概览（仅管理员可见，页面索引5，导航索引3）
-    if (userProvider.currentUser?.role == 'admin') {
-      if (pageIndex == currentPageIndex) {
-        return 3; // 导航索引固定为3
-      }
-      currentPageIndex++;
+
+    // 审核管理：在基础页面之后，管理员概览之前
+    if (userProvider.currentUser?.isAdminOrModerator == true &&
+        pageIndex == basePageCount) {
+      return 2;
     }
     
     // 上传管理（所有已登录用户可见，页面索引根据前面页面动态确定，导航索引固定为4）
@@ -674,8 +699,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         return 4; // 导航索引固定为4
       }
     }
-    
-    return -1; // 未找到匹配的导航索引
+
+    // 默认返回知识库索引
+    return 0;
   }
 
   // 导航项构建器 - 响应式设计
@@ -729,59 +755,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               }
 
               // 计算实际页面索引
-              // 导航索引（侧边栏）：知识库(0), 人设卡(1), 审核管理(2), 管理员概览(3), 上传管理(4)
-              // 实际页面索引：知识库(0), 人设卡(1), 消息(2), 个人资料(3), 审核管理(4), 管理员概览(5), 上传管理(6)
-              int actualIndex = index;
-              
-              // 基础页面（0-1）直接对应
+              int actualIndex = 0;
+
+              // 基础页面：知识库(0)、人设卡(1) 直接对应
               if (index <= 1) {
                 actualIndex = index;
-              } else {
-                // 管理页面从索引4开始（basePages有4个：知识库、人设卡、消息、个人资料）
-                actualIndex = 4; // basePages之后开始
-                
-                // 审核管理（导航索引2，实际页面索引4）
-                if (index == 2) {
-                  actualIndex = 4;
-                }
-                // 管理员概览（导航索引3，实际页面索引5）
-                else if (index == 3) {
-                  // 需要先加上审核管理页面（如果用户是审核员或管理员）
-                  if (userProvider.currentUser?.isAdminOrModerator == true) {
-                    actualIndex = 5;
-                  }
-                }
-                // 上传管理（导航索引4）
-                else if (index == 4) {
-                  // 基础索引4（basePages之后）
-                  actualIndex = 4;
-                  // 加上审核管理页面（如果用户是审核员或管理员）
-                  if (userProvider.currentUser?.isAdminOrModerator == true) {
-                    actualIndex += 1; // 审核管理
-                  }
-                  // 加上管理员概览页面（如果用户是管理员）
-                  if (userProvider.currentUser?.role == 'admin') {
-                    actualIndex += 1; // 管理员概览
-                  }
-                  // 现在actualIndex就是上传管理的索引
-                }
               }
-              
-              // 审核管理权限检查（导航索引2，实际页面索引4）
-              if (index == 2 &&
-                  userProvider.currentUser?.isAdminOrModerator != true) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text('需要管理员或审核员权限')));
-                return;
+              // 审核管理
+              else if (index == 2 &&
+                  userProvider.currentUser?.isAdminOrModerator == true) {
+                actualIndex = 4; // 在基础页面之后
               }
-
-              // 管理员权限检查（导航索引3，实际页面索引5）
-              if (index == 3 && userProvider.currentUser?.role != 'admin') {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text('需要管理员权限')));
-                return;
+              // 管理员概览
+              else if (index == 3 &&
+                  userProvider.currentUser?.role == 'admin') {
+                actualIndex = 5; // 审核管理之后
               }
 
               // 上传管理：对所有已登录用户开放入口
@@ -791,7 +779,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               setState(() {
                 _currentIndex = actualIndex;
               });
-              
+
               // 如果切换到消息页面，刷新未读消息数量
               if (actualIndex == 2) {
                 _loadUnreadMessageCount();
@@ -820,9 +808,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           return '首页';
       }
     }
-    
+
     int currentIndex = 4;
-    
+
     // 审核管理（管理员和审核员可见）
     if (userProvider.currentUser?.isAdminOrModerator == true) {
       if (index == currentIndex) {
@@ -830,7 +818,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
       currentIndex++;
     }
-    
+
     // 管理员概览（仅管理员可见）
     if (userProvider.currentUser?.role == 'admin') {
       if (index == currentIndex) {
@@ -845,7 +833,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         return '上传管理';
       }
     }
-    
+
     return '首页';
   }
 }
